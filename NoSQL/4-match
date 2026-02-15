@@ -1,0 +1,2 @@
+//lsit school with name=ol school
+db.school.find({name: "Holberton school"})
