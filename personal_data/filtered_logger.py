@@ -7,15 +7,21 @@ import logging
 import os
 import re
 from typing import List
+import mysql.connector
 
-def filter_datum(fields: List[str], redaction: str, 
+PII_FIELDS = ("name", "email", "phone", "ssn", "password")
+
+
+def filter_datum(fields: List[str], redaction: str,
                  message: str, separator: str) -> str:
-    """Replaces values of specific fields in a log message"""
+    """
+    Return the log message with specified fields obfuscated.
+    """
     for field in fields:
-        # This regex targets the field name and its value until the next separator
-        pattern = f"({field}=)([^{separator}]+)"
-        # \1 keeps the 'field=' part, and we append the redaction string
-        message = re.sub(pattern, r"\1" + redaction, message)
+        # Regex matches the field name, the '=', and all characters 
+        # until the next separator
+        pattern = f"{field}=[^{separator}]*"
+        message = re.sub(pattern, f"{field}={redaction}", message)
     return message
 
 
@@ -39,8 +45,9 @@ class RedactingFormatter(logging.Formatter):
         """
         Return the formatted log record with sensitive fields redacted.
         """
+        original_log = super().format(record)
         return filter_datum(self.fields, self.REDACTION,
-                            super().format(record), self.SEPARATOR)
+                            original_log, self.SEPARATOR)
 
 
 def get_logger() -> logging.Logger:
@@ -60,9 +67,11 @@ def get_logger() -> logging.Logger:
     return logger
 
 
-def get_db() -> mysql.connector.connection.MySQLConnection:
+def get_db() -> "mysql.connector.connection.MySQLConnection":
     """
     Return a connection to the MySQL database.
+    Using a string for the return type prevents NameError if mysql 
+    is not fully initialized in the namespace.
     """
     return mysql.connector.connect(
         user=os.getenv("PERSONAL_DATA_DB_USERNAME", "root"),
@@ -79,32 +88,18 @@ def main() -> None:
     db = get_db()
     cursor = db.cursor()
     cursor.execute("SELECT * FROM users;")
-    fields = cursor.column_names
+    
+    # Fetch column names to build the message correctly
+    headers = [field[0] for field in cursor.description]
     logger = get_logger()
 
     for row in cursor:
-        message = "".join(
-            "{}={};".format(field, value)
-            for field, value in zip(fields, row)
-        )
+        # Build the message string in the format field=value;
+        message = "; ".join(f"{h}={v}" for h, v in zip(headers, row)) + ";"
         logger.info(message)
 
     cursor.close()
     db.close()
-
-
-def hash_password(password: str) -> bytes:
-    """
-    Return a salted, hashed password.
-    """
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-
-
-def is_valid(hashed_password: bytes, password: str) -> bool:
-    """
-    Return True if the password matches the hashed password.
-    """
-    return bcrypt.checkpw(password.encode("utf-8"), hashed_password)
 
 
 if __name__ == "__main__":
