@@ -18,8 +18,6 @@ def filter_datum(fields: List[str], redaction: str,
     Return the log message with specified fields obfuscated.
     """
     for field in fields:
-        # Regex matches the field name, the '=', and all characters 
-        # until the next separator
         pattern = f"{field}=[^{separator}]*"
         message = re.sub(pattern, f"{field}={redaction}", message)
     return message
@@ -70,8 +68,6 @@ def get_logger() -> logging.Logger:
 def get_db() -> "mysql.connector.connection.MySQLConnection":
     """
     Return a connection to the MySQL database.
-    Using a string for the return type prevents NameError if mysql 
-    is not fully initialized in the namespace.
     """
     return mysql.connector.connect(
         user=os.getenv("PERSONAL_DATA_DB_USERNAME", "root"),
@@ -88,13 +84,10 @@ def main() -> None:
     db = get_db()
     cursor = db.cursor()
     cursor.execute("SELECT * FROM users;")
-    
-    # Fetch column names to build the message correctly
     headers = [field[0] for field in cursor.description]
     logger = get_logger()
 
     for row in cursor:
-        # Build the message string in the format field=value;
         message = "; ".join(f"{h}={v}" for h, v in zip(headers, row)) + ";"
         logger.info(message)
 
