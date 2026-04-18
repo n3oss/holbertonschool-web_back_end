@@ -8,19 +8,15 @@ import os
 import re
 from typing import List
 
-import bcrypt
-import mysql.connector
-
-PII_FIELDS = ("name", "email", "phone", "ssn", "password")
-
-
-def filter_datum(fields: List[str], redaction: str,
+def filter_datum(fields: List[str], redaction: str, 
                  message: str, separator: str) -> str:
-    """
-    Return the log message with specified fields obfuscated.
-    """
-    pattern = r"({}=)[^{}]*".format("|".join(fields), separator)
-    return re.sub(pattern, r"\1" + redaction, message)
+    """Replaces values of specific fields in a log message"""
+    for field in fields:
+        # This regex targets the field name and its value until the next separator
+        pattern = f"({field}=)([^{separator}]+)"
+        # \1 keeps the 'field=' part, and we append the redaction string
+        message = re.sub(pattern, r"\1" + redaction, message)
+    return message
 
 
 class RedactingFormatter(logging.Formatter):
