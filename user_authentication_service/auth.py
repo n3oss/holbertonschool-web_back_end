@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """DB module for the user authentication service"""
+import uuid
 import bcrypt
 from db import DB
 from user import User
 from bcrypt import hashpw, gensalt
 from sqlalchemy.orm.exc import NoResultFound
 
+
+def _generate_uuid() -> str:
+    """Return a string representation of a new UUID."""
+    return str(uuid.uuid4())
 
 def _hash_password(password: str) -> bytes:
     """hashed password"""
