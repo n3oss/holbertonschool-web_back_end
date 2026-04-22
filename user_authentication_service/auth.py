@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """DB module for the user authentication service"""
+import bcrypt
 from db import DB
 from user import User
 from bcrypt import hashpw, gensalt
