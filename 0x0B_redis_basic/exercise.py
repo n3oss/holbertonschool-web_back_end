@@ -30,11 +30,13 @@ def call_history(method: Callable) -> Callable:
 
 def replay(method: Callable) -> None:
     """Display the call history of a method."""
-    # Access the Redis instance from the bound method's self
+    # Works whether called as replay(cache.store) or replay(Cache.store)
     redis_client = method.__self__._redis
     qualname = method.__qualname__
 
-    count = int(redis_client.get(qualname) or 0)
+    # count_calls stores the count under the undecorated qualname e.g. "Cache.store"
+    count_bytes = redis_client.get(qualname)
+    count = int(count_bytes) if count_bytes else 0
     print(f"{qualname} was called {count} times:")
 
     inputs = redis_client.lrange(f"{qualname}:inputs", 0, -1)
