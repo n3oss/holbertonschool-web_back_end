@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Redis basic exercise: Cache class."""
 from functools import wraps
-from typing import Any, Callable, Optional, Union, cast
+from typing import Callable, Optional, Union, cast
 import uuid
 import redis
 
@@ -30,22 +30,18 @@ def call_history(method: Callable) -> Callable:
 
 def replay(method: Callable) -> None:
     """Display the call history of a method."""
-    # Works whether called as replay(cache.store) or replay(Cache.store)
-    redis_client = method.__self__._redis
+    redis_client = redis.Redis()
     qualname = method.__qualname__
 
-    # count_calls stores the count under the undecorated qualname e.g. "Cache.store"
-    count_bytes = redis_client.get(qualname)
-    count = int(count_bytes) if count_bytes else 0
+    count = redis_client.get(qualname)
+    count = int(count) if count else 0
     print(f"{qualname} was called {count} times:")
 
     inputs = redis_client.lrange(f"{qualname}:inputs", 0, -1)
     outputs = redis_client.lrange(f"{qualname}:outputs", 0, -1)
 
     for inp, out in zip(inputs, outputs):
-        input_str = inp.decode("utf-8")
-        output_str = out.decode("utf-8")
-        print(f"{qualname}(*{input_str}) -> {output_str}")
+        print(f"{qualname}(*{inp.decode('utf-8')}) -> {out.decode('utf-8')}")
 
 
 class Cache:
